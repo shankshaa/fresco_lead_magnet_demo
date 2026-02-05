@@ -1,0 +1,12 @@
+{
+  "name": "addenda-tracker",
+  "version": "1.0.0",
+  "description": "Addenda Change Tracker - Division 8 Estimating Tool",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

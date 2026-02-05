@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "api/compare.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/addenda-tracker.html"
+    }
+  ]
+}

@@ -1,0 +1,2120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Addenda Change Tracker - Division 8 Estimating Tool</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a1a1a;
+            --accent: #2d7a3e;        /* Fresco green */
+            --accent-dark: #236330;   /* Darker green for hover */
+            --accent-light: #e8f5e9;  /* Light green for backgrounds */
+            --bg: #f5f5f0;            /* Warm beige background like Fresco */
+            --surface: #ffffff;
+            --border: #d4d4c8;
+            --text: #2a2a2a;
+            --text-light: #666666;
+            --success: #2d7a3e;       /* Same as accent */
+            --warning: #f4a900;
+            --critical: #d32f2f;
+            --shadow: rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: 'Work Sans', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 24px 0;
+            border-bottom: 4px solid var(--accent);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-family: 'DM Mono', monospace;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-accent {
+            color: var(--accent);
+        }
+
+        .fresco-link {
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .fresco-link:hover .powered-by {
+            background: rgba(45, 122, 62, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .powered-by {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'DM Mono', monospace;
+            background: rgba(45, 122, 62, 0.2);
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(45, 122, 62, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 80px 0;
+            text-align: center;
+            background: linear-gradient(135deg, var(--surface) 0%, var(--bg) 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            line-height: 1.1;
+            color: var(--primary);
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+
+        .value-props {
+            display: flex;
+            gap: 48px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .value-prop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .value-prop-number {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .value-prop-text {
+            font-size: 14px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            padding: 60px 0;
+        }
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        @media (max-width: 768px) {
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-box {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: var(--surface);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-box:hover {
+            border-color: var(--accent);
+            background: #fffaf7;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .upload-box.has-file {
+            border-color: var(--success);
+            background: #f0f8f2;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .upload-box.has-file .upload-icon {
+            opacity: 1;
+        }
+
+        .upload-label {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .file-name {
+            margin-top: 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            color: var(--success);
+            background: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Compare Button */
+        .compare-button {
+            width: 100%;
+            padding: 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .compare-button:hover:not(:disabled) {
+            background: var(--accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .compare-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--accent);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-section {
+            padding: 40px 0 80px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+            border-bottom: 2px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 16px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-light);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            margin-bottom: -2px;
+        }
+
+        .tab:hover {
+            color: var(--text);
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Summary View */
+        .summary-view {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        .summary-header {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+
+        .summary-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .summary-meta {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            color: var(--text-light);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: var(--bg);
+            padding: 24px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .stat-breakdown {
+            margin-top: 12px;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        /* Changes Section */
+        .changes-section {
+            margin-bottom: 40px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .section-icon {
+            font-size: 24px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .change-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-left: 4px solid;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .change-card:hover {
+            box-shadow: 0 4px 12px var(--shadow);
+            transform: translateX(4px);
+        }
+
+        .change-card.critical {
+            border-left-color: var(--critical);
+        }
+
+        .change-card.moderate {
+            border-left-color: var(--warning);
+        }
+
+        .change-card.minor {
+            border-left-color: #999;
+        }
+
+        .change-header {
+            margin-bottom: 16px;
+        }
+
+        .change-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .change-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-light);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .comparison-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            padding: 16px;
+            background: var(--bg);
+            border-radius: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-box {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .comparison-side {
+            padding: 12px;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .comparison-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        .comparison-text {
+            font-size: 14px;
+            line-height: 1.6;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .impact-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .impact-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .action-items {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .action-item {
+            padding: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .action-item::before {
+            content: "☐";
+            font-size: 16px;
+            color: var(--accent);
+        }
+
+        /* Table View */
+        .table-view {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 32px;
+            overflow-x: auto;
+        }
+
+        .table-controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        select, input[type="text"] {
+            padding: 10px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Work Sans', sans-serif;
+            background: white;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: var(--primary);
+            color: white;
+        }
+
+        th {
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody tr:hover {
+            background: var(--bg);
+        }
+
+        .priority-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .priority-badge.critical {
+            background: #ffe5e5;
+            color: var(--critical);
+        }
+
+        .priority-badge.moderate {
+            background: #fff5e5;
+            color: var(--warning);
+        }
+
+        .priority-badge.minor {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        /* Email Signup Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            padding: 48px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal h2 {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+
+        .modal p {
+            color: var(--text-light);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+
+        .email-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            padding: 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            padding: 16px 24px;
+            background: transparent;
+            color: var(--text-light);
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg);
+        }
+
+        .benefits-list {
+            list-style: none;
+            margin: 24px 0;
+            padding: 0;
+        }
+
+        .benefits-list li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .benefits-list li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        /* Export Buttons */
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn-export {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-export:hover {
+            background: #333;
+            transform: translateY(-2px);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: var(--primary);
+            color: white;
+            padding: 60px 40px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 60px;
+        }
+
+        .cta-section h3 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .cta-section p {
+            font-size: 18px;
+            margin-bottom: 32px;
+            opacity: 0.9;
+        }
+
+        .btn-cta {
+            padding: 18px 48px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-cta:hover {
+            background: var(--accent-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Light Fresco Promo Link */
+        .fresco-promo-link {
+            display: inline-block;
+            margin-top: 24px;
+            padding: 12px 20px;
+            background: rgba(45, 122, 62, 0.08);
+            border: 1px solid rgba(45, 122, 62, 0.2);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .fresco-promo-link:hover {
+            background: rgba(45, 122, 62, 0.12);
+            border-color: rgba(45, 122, 62, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .fresco-promo-link strong {
+            color: var(--accent);
+        }
+
+        /* Email Gate Styles */
+        .gated-content {
+            position: relative;
+        }
+
+        .gated-content.locked .gated-items {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .email-gate-panel {
+            background: white;
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            padding: 32px;
+            margin: 32px 0;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(45, 122, 62, 0.15);
+        }
+
+        .email-gate-panel h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        .email-gate-panel p {
+            font-size: 15px;
+            color: var(--text-light);
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .email-gate-form {
+            display: flex;
+            gap: 12px;
+            max-width: 500px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .email-gate-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 14px 18px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.2s ease;
+        }
+
+        .email-gate-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(45, 122, 62, 0.1);
+        }
+
+        .email-gate-input.error {
+            border-color: var(--critical);
+        }
+
+        .email-gate-button {
+            padding: 14px 32px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .email-gate-button:hover {
+            background: var(--accent-dark);
+            transform: translateY(-1px);
+        }
+
+        .email-gate-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .email-error {
+            color: var(--critical);
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .email-error.show {
+            display: block;
+        }
+
+        .btn-export:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-export:disabled:hover {
+            background: #ccc;
+            transform: none;
+        }
+
+        .preview-badge {
+            display: inline-block;
+            background: var(--accent-light);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        function App() {
+            // ============================================
+            // SUPABASE CONFIGURATION
+            // ============================================
+            // Replace these with your actual Supabase credentials from https://supabase.com
+            const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+            const SUPABASE_ANON_KEY = 'YOUR_ANON_PUBLIC_KEY';
+            
+            // Initialize Supabase client (only if credentials are provided)
+            const supabase = (SUPABASE_URL !== 'https://YOUR_PROJECT_ID.supabase.co') 
+                ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+                : null;
+            // ============================================
+
+            const [originalFile, setOriginalFile] = useState(null);
+            const [addendumFile, setAddendumFile] = useState(null);
+            const [isComparing, setIsComparing] = useState(false);
+            const [results, setResults] = useState(null);
+            const [activeTab, setActiveTab] = useState('summary');
+            const [showEmailModal, setShowEmailModal] = useState(false);
+            const [hasUsedBefore, setHasUsedBefore] = useState(false);
+            const [userEmail, setUserEmail] = useState('');
+            const [isSignedUp, setIsSignedUp] = useState(false);
+            const [isGateLocked, setIsGateLocked] = useState(true);
+            const [gateEmail, setGateEmail] = useState('');
+            const [emailError, setEmailError] = useState('');
+
+            useEffect(() => {
+                // Check if user has used the tool before
+                const used = localStorage.getItem('addenda_tracker_used');
+                const email = localStorage.getItem('user_email');
+                
+                if (used) {
+                    setHasUsedBefore(true);
+                }
+                
+                if (email) {
+                    setIsSignedUp(true);
+                    setUserEmail(email);
+                }
+            }, []);
+
+            const extractTextFromPDF = async (file) => {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                let fullText = '';
+
+                for (let i = 1; i <= Math.min(pdf.numPages, 50); i++) { // Limit to 50 pages for demo
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `\n--- Page ${i} ---\n${pageText}`;
+                }
+
+                return fullText;
+            };
+
+            const compareDocuments = async () => {
+                if (!originalFile || !addendumFile) return;
+
+                setIsComparing(true);
+
+                try {
+                    console.log('📄 Extracting text from PDFs...');
+                    // Extract text from both PDFs
+                    const originalText = await extractTextFromPDF(originalFile);
+                    const addendumText = await extractTextFromPDF(addendumFile);
+
+                    console.log('🚀 Sending to backend API for analysis...');
+                    
+                    // Call OUR backend API (not Anthropic directly)
+                    const response = await fetch('/api/compare', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            originalText: originalText,
+                            addendumText: addendumText
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('❌ Backend API error:', errorData);
+                        throw new Error(errorData.error || 'API request failed');
+                    }
+
+                    const data = await response.json();
+                    console.log('✅ Analysis complete!');
+
+                    if (data.success && data.results) {
+                        setResults(data.results);
+                    } else {
+                        throw new Error('Invalid response from API');
+                    }
+
+                    // Mark as used (for hybrid email capture)
+                    if (!hasUsedBefore && !isSignedUp) {
+                        localStorage.setItem('addenda_tracker_used', 'true');
+                        localStorage.setItem('first_used_date', new Date().toISOString());
+                        setHasUsedBefore(true);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error comparing documents:', error);
+                    
+                    // Show error to user
+                    alert(`Error: ${error.message}\n\nPlease make sure the backend API is configured with an Anthropic API key.`);
+                    
+                    // Fallback to mock data so demo still works
+                    console.log('⚠️ Using mock data as fallback');
+                    setResults(createMockResults());
+                    
+                    if (!hasUsedBefore && !isSignedUp) {
+                        localStorage.setItem('addenda_tracker_used', 'true');
+                        localStorage.setItem('first_used_date', new Date().toISOString());
+                        setHasUsedBefore(true);
+                    }
+                }
+
+                setIsComparing(false);
+            };
+
+            const createMockResults = () => ({
+                project_info: {
+                    name: "Memorial Hospital Renovation",
+                    addendum_number: "01"
+                },
+                summary_stats: {
+                    total_changes: 8,
+                    critical_changes: 3,
+                    moderate_changes: 2,
+                    minor_changes: 3,
+                    doors_affected: 50,
+                    estimated_cost_impact: "+$12,450 (+3.2%)"
+                },
+                changes: [
+                    {
+                        id: 1,
+                        priority: "critical",
+                        division: "Div 8",
+                        section: "08 71 00 - Door Hardware",
+                        change_type: "Specification Modified",
+                        was: "1-hour rated doors in stairwells",
+                        now: "90-minute rated doors in all stairwells",
+                        impact: "24 doors in Stairwells A, B, C, D require upgraded fire rating",
+                        doors_affected: "24 doors",
+                        cost_impact: "~$4,800 increase",
+                        location: "Page 87, Section 3.2.1",
+                        actions: [
+                            "Get pricing for 90-min rated hardware",
+                            "Verify availability with supplier",
+                            "Update door schedule"
+                        ]
+                    },
+                    {
+                        id: 2,
+                        priority: "critical",
+                        division: "Div 8",
+                        section: "Door Schedule",
+                        change_type: "Additions + Modifications",
+                        was: "Original door count",
+                        now: "8 new doors added (D-401 through D-408), Door D-215 changed from Wood to HM",
+                        impact: "8 additional doors to estimate, 1 door type change",
+                        doors_affected: "+8 doors, 1 modified",
+                        cost_impact: "~$6,400 increase",
+                        location: "Sheet A-201, Drawing 5",
+                        actions: [
+                            "Add D-401 through D-408 to takeoff",
+                            "Revise D-215 pricing (HM vs Wood)",
+                            "Update frame/hardware requirements"
+                        ]
+                    },
+                    {
+                        id: 3,
+                        priority: "critical",
+                        division: "Div 8",
+                        section: "08 71 00 - Door Hardware",
+                        change_type: "Product Specification Changed",
+                        was: "LCN 4040XP closers",
+                        now: "LCN 4110 heavy-duty closers",
+                        impact: "All exterior doors require upgraded closers",
+                        doors_affected: "18 exterior doors",
+                        cost_impact: "~$1,250 increase",
+                        location: "Page 92, Section 3.4.2",
+                        actions: [
+                            "Contact supplier for LCN 4110 pricing",
+                            "Verify lead time hasn't changed",
+                            "Update hardware sets 1, 3, 7"
+                        ]
+                    },
+                    {
+                        id: 4,
+                        priority: "moderate",
+                        division: "Div 8",
+                        section: "08 11 00 - Metal Doors & Frames",
+                        change_type: "Finish Clarification",
+                        was: "Factory prime finish",
+                        now: "Factory finish, color to be selected",
+                        impact: "May affect pricing if upgraded finish specified",
+                        doors_affected: "All HM doors",
+                        cost_impact: "TBD",
+                        location: "Page 95, Section 2.3",
+                        actions: [
+                            "Clarify with GC if standard or premium finish"
+                        ]
+                    },
+                    {
+                        id: 5,
+                        priority: "moderate",
+                        division: "General",
+                        section: "General Requirements",
+                        change_type: "Timeline Extended",
+                        was: "Delivery deadline: 3/15",
+                        now: "Delivery deadline: 3/22",
+                        impact: "Additional 7 days reduces schedule pressure",
+                        doors_affected: "All doors",
+                        cost_impact: "None",
+                        location: "Page 12, Section 1.5",
+                        actions: [
+                            "Update project schedule"
+                        ]
+                    },
+                    {
+                        id: 6,
+                        priority: "minor",
+                        division: "Div 26",
+                        section: "Electrical",
+                        change_type: "Panel Relocation",
+                        was: "Original panel location",
+                        now: "Revised panel locations",
+                        impact: "No Division 8 impact",
+                        doors_affected: "None",
+                        cost_impact: "None",
+                        location: "Sheet E-301",
+                        actions: []
+                    },
+                    {
+                        id: 7,
+                        priority: "minor",
+                        division: "Div 23",
+                        section: "HVAC",
+                        change_type: "Duct Routing Changed",
+                        was: "Original duct routing",
+                        now: "Revised duct paths",
+                        impact: "No Division 8 impact",
+                        doors_affected: "None",
+                        cost_impact: "None",
+                        location: "Sheet M-201",
+                        actions: []
+                    },
+                    {
+                        id: 8,
+                        priority: "minor",
+                        division: "Div 03",
+                        section: "Concrete",
+                        change_type: "Foundation Depth Increased",
+                        was: "12 inch depth",
+                        now: "18 inch depth",
+                        impact: "No Division 8 impact",
+                        doors_affected: "None",
+                        cost_impact: "None",
+                        location: "Sheet S-101",
+                        actions: []
+                    }
+                ]
+            });
+
+            const handleFileChange = (type, event) => {
+                const file = event.target.files[0];
+                if (file && file.type === 'application/pdf') {
+                    if (type === 'original') {
+                        setOriginalFile(file);
+                    } else {
+                        setAddendumFile(file);
+                    }
+                }
+            };
+
+            const handleCompare = async () => {
+                // Check if user should be prompted for email
+                if (hasUsedBefore && !isSignedUp) {
+                    setShowEmailModal(true);
+                    return;
+                }
+
+                await compareDocuments();
+            };
+
+            const exportToPDF = () => {
+                console.log('📄 PDF Export started');
+                
+                if (!results) {
+                    console.error('❌ No results to export');
+                    alert('No results to export. Please run a comparison first.');
+                    return;
+                }
+
+                try {
+                    console.log('✅ Results exist, checking jsPDF...');
+                    
+                    // Check if jsPDF is loaded
+                    if (!window.jspdf) {
+                        console.error('❌ jsPDF library not loaded');
+                        alert('PDF library not loaded. Please refresh the page.');
+                        return;
+                    }
+
+                    console.log('✅ jsPDF library loaded');
+
+                    // Suppress jsPDF font warnings
+                    const originalWarn = console.warn;
+                    console.warn = function(msg) {
+                        if (!msg.toString().includes('TT:')) {
+                            originalWarn.apply(console, arguments);
+                        }
+                    };
+
+                    // Use jsPDF
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    
+                    console.log('✅ jsPDF instance created');
+                
+                let yPos = 20;
+                const lineHeight = 7;
+                const pageHeight = 280;
+                const margin = 20;
+
+                // Title
+                doc.setFontSize(18);
+                doc.setFont(undefined, 'bold');
+                doc.text('Addendum Change Summary', margin, yPos);
+                yPos += 10;
+
+                // Project info
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.text(`Project: ${results.project_info.name}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`Addendum: #${results.project_info.addendum_number}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`Analyzed: ${new Date().toLocaleDateString()}`, margin, yPos);
+                yPos += lineHeight * 2;
+
+                // Stats
+                doc.setFontSize(12);
+                doc.setFont(undefined, 'bold');
+                doc.text('Summary Statistics', margin, yPos);
+                yPos += lineHeight;
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.text(`Total Changes: ${results.summary_stats.total_changes}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`Critical: ${results.summary_stats.critical_changes} | Moderate: ${results.summary_stats.moderate_changes} | Minor: ${results.summary_stats.minor_changes}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`Doors Affected: ${results.summary_stats.doors_affected}`, margin, yPos);
+                yPos += lineHeight;
+                doc.text(`Cost Impact: ${results.summary_stats.estimated_cost_impact}`, margin, yPos);
+                yPos += lineHeight * 2;
+
+                // Changes
+                const criticalChanges = results.changes.filter(c => c.priority === 'critical');
+                const moderateChanges = results.changes.filter(c => c.priority === 'moderate');
+                const minorChanges = results.changes.filter(c => c.priority === 'minor');
+
+                // Critical changes
+                if (criticalChanges.length > 0) {
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(211, 47, 47); // Red
+                    doc.text(`CRITICAL CHANGES (${criticalChanges.length})`, margin, yPos);
+                    yPos += lineHeight;
+                    
+                    doc.setTextColor(0, 0, 0); // Black
+                    doc.setFontSize(10);
+                    
+                    criticalChanges.forEach((change, idx) => {
+                        if (yPos > pageHeight) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`${idx + 1}. ${change.section}`, margin, yPos);
+                        yPos += lineHeight;
+                        
+                        doc.setFont(undefined, 'normal');
+                        doc.text(`Location: ${change.location}`, margin + 5, yPos);
+                        yPos += lineHeight;
+                        doc.text(`Impact: ${change.impact}`, margin + 5, yPos);
+                        yPos += lineHeight;
+                        doc.text(`Cost: ${change.cost_impact}`, margin + 5, yPos);
+                        yPos += lineHeight * 1.5;
+                    });
+                    yPos += lineHeight;
+                }
+
+                // Moderate changes
+                if (moderateChanges.length > 0) {
+                    if (yPos > pageHeight - 40) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    doc.setFontSize(12);
+                    doc.setFont(undefined, 'bold');
+                    doc.setTextColor(244, 169, 0); // Yellow
+                    doc.text(`MODERATE CHANGES (${moderateChanges.length})`, margin, yPos);
+                    yPos += lineHeight;
+                    
+                    doc.setTextColor(0, 0, 0);
+                    doc.setFontSize(10);
+                    
+                    moderateChanges.forEach((change, idx) => {
+                        if (yPos > pageHeight) {
+                            doc.addPage();
+                            yPos = 20;
+                        }
+                        
+                        doc.setFont(undefined, 'bold');
+                        doc.text(`${idx + 1}. ${change.section}`, margin, yPos);
+                        yPos += lineHeight;
+                        
+                        doc.setFont(undefined, 'normal');
+                        doc.text(`Location: ${change.location}`, margin + 5, yPos);
+                        yPos += lineHeight;
+                        doc.text(`Impact: ${change.impact}`, margin + 5, yPos);
+                        yPos += lineHeight * 1.5;
+                    });
+                }
+
+                // Save PDF
+                console.log('💾 Saving PDF...');
+                try {
+                    const pdfBlob = doc.output('blob');
+                    const pdfUrl = URL.createObjectURL(pdfBlob);
+                    
+                    // Try to download
+                    const link = document.createElement('a');
+                    link.href = pdfUrl;
+                    link.download = `Addenda-Comparison-${results.project_info.name.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    // Cleanup
+                    setTimeout(() => URL.revokeObjectURL(pdfUrl), 100);
+                    
+                    console.log('✅ PDF download triggered successfully!');
+                    console.log('💡 If PDF did not download, check your browser download settings or popup blocker');
+                } catch (downloadError) {
+                    console.warn('⚠️ Direct download failed, opening in new tab instead');
+                    // Fallback: open in new tab
+                    const pdfDataUri = doc.output('dataurlstring');
+                    window.open(pdfDataUri, '_blank');
+                }
+                
+                // Restore console.warn
+                console.warn = originalWarn;
+                
+                } catch (error) {
+                    console.error('❌ PDF Export Error:', error);
+                    alert(`Failed to export PDF: ${error.message}`);
+                }
+            };
+
+            const exportToExcel = () => {
+                if (!results) return;
+
+                // Prepare data for Excel
+                const excelData = results.changes.map(change => ({
+                    'ID': change.id,
+                    'Priority': change.priority.toUpperCase(),
+                    'Division': change.division,
+                    'Section': change.section,
+                    'Change Type': change.change_type,
+                    'Was': change.was,
+                    'Now': change.now,
+                    'Impact': change.impact,
+                    'Doors Affected': change.doors_affected,
+                    'Cost Impact': change.cost_impact,
+                    'Location': change.location,
+                    'Actions': change.actions.join('; ')
+                }));
+
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                
+                // Add summary sheet
+                const summaryData = [
+                    ['Addendum Change Summary'],
+                    [''],
+                    ['Project:', results.project_info.name],
+                    ['Addendum:', `#${results.project_info.addendum_number}`],
+                    ['Date Analyzed:', new Date().toLocaleDateString()],
+                    [''],
+                    ['Statistics:'],
+                    ['Total Changes:', results.summary_stats.total_changes],
+                    ['Critical:', results.summary_stats.critical_changes],
+                    ['Moderate:', results.summary_stats.moderate_changes],
+                    ['Minor:', results.summary_stats.minor_changes],
+                    ['Doors Affected:', results.summary_stats.doors_affected],
+                    ['Cost Impact:', results.summary_stats.estimated_cost_impact]
+                ];
+                const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+                XLSX.utils.book_append_sheet(wb, summarySheet, 'Summary');
+
+                // Add changes sheet
+                const changesSheet = XLSX.utils.json_to_sheet(excelData);
+                XLSX.utils.book_append_sheet(wb, changesSheet, 'All Changes');
+
+                // Add critical changes sheet
+                const criticalData = excelData.filter(c => c.Priority === 'CRITICAL');
+                if (criticalData.length > 0) {
+                    const criticalSheet = XLSX.utils.json_to_sheet(criticalData);
+                    XLSX.utils.book_append_sheet(wb, criticalSheet, 'Critical Changes');
+                }
+
+                // Save file
+                XLSX.writeFile(wb, `Addenda-Comparison-${results.project_info.name.replace(/\s/g, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`);
+            };
+
+            const validateEmail = (email) => {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            };
+
+            const handleUnlockGate = async (e) => {
+                if (e && e.preventDefault) {
+                    e.preventDefault();
+                }
+                
+                console.log('🔍 Unlock attempt started');
+                console.log('📧 Email entered:', gateEmail);
+                console.log('🔒 Current gate state:', isGateLocked);
+                
+                setEmailError('');
+
+                if (!gateEmail || !gateEmail.trim()) {
+                    console.log('❌ Email is empty');
+                    setEmailError('Please enter your email address');
+                    return;
+                }
+
+                const trimmedEmail = gateEmail.trim();
+                console.log('📧 Validating email:', trimmedEmail);
+
+                if (!validateEmail(trimmedEmail)) {
+                    console.log('❌ Email validation failed for:', trimmedEmail);
+                    setEmailError('Please enter a valid email address (e.g., name@company.com)');
+                    return;
+                }
+
+                console.log('✅ Email validation passed');
+                console.log('🔓 Unlocking gate for:', trimmedEmail);
+                
+                // Save to Supabase
+                if (supabase) {
+                    try {
+                        console.log('💾 Saving to Supabase...');
+                        const { data, error } = await supabase
+                            .from('email_captures')
+                            .insert([
+                                {
+                                    email: trimmedEmail,
+                                    source: 'email_gate',
+                                    browser: navigator.userAgent,
+                                    first_use_date: localStorage.getItem('first_used_date') || new Date().toISOString()
+                                }
+                            ]);
+
+                        if (error) {
+                            console.error('❌ Supabase error:', error);
+                        } else {
+                            console.log('✅ Email saved to Supabase successfully!');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error saving to Supabase:', error);
+                        // Continue anyway - don't block user if Supabase fails
+                    }
+                } else {
+                    console.log('⚠️ Supabase not configured - add your credentials in the code');
+                    console.log('📧 Email would be:', trimmedEmail);
+                }
+
+                // Unlock the content
+                console.log('🔓 Setting isGateLocked to false...');
+                setIsGateLocked(false);
+                setUserEmail(trimmedEmail);
+                
+                // Optional: Also mark as signed up for future visits
+                localStorage.setItem('user_email', trimmedEmail);
+                setIsSignedUp(true);
+                
+                console.log('✅ Gate unlocked! New state should be false');
+                console.log('📊 New isGateLocked value:', false);
+            };
+
+            const handleEmailSignup = async (email) => {
+                // ============================================
+                // GOOGLE SHEETS INTEGRATION
+                // ============================================
+                // STEP 1: Follow instructions in google-sheets-setup.md
+                // STEP 2: Paste your Google Script Web App URL below:
+                
+                const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE';
+                // Example: 'https://script.google.com/macros/s/AKfycby.../exec'
+                
+                // ============================================
+                
+                // Store email locally
+                localStorage.setItem('user_email', email);
+                setIsSignedUp(true);
+                setUserEmail(email);
+                setShowEmailModal(false);
+
+                // Send to Google Sheets
+                if (GOOGLE_SCRIPT_URL !== 'PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                    try {
+                        await fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors', // Required for Google Apps Script
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email: email,
+                                source: 'addenda_tracker',
+                                browser: navigator.userAgent,
+                                firstUseDate: localStorage.getItem('first_used_date') || new Date().toISOString(),
+                            })
+                        });
+                        
+                        console.log('✅ Email sent to Google Sheets:', email);
+                        
+                    } catch (error) {
+                        console.error('❌ Error saving email to Google Sheets:', error);
+                        // Continue anyway - don't block the user if storage fails
+                    }
+                } else {
+                    // Demo mode - just log to console
+                    console.log('📧 User signed up:', email);
+                    console.log('⚠️ DEMO MODE: Add your Google Script URL to save emails');
+                    console.log('📖 See google-sheets-setup.md for instructions');
+                }
+
+                // Now proceed with comparison
+                await compareDocuments();
+            };
+
+            const renderSummaryView = () => {
+                if (!results) return null;
+
+                const criticalChanges = results.changes.filter(c => c.priority === 'critical');
+                const moderateChanges = results.changes.filter(c => c.priority === 'moderate');
+                const minorChanges = results.changes.filter(c => c.priority === 'minor');
+
+                // Preview items (always shown): first 1-2 critical changes
+                const previewChanges = criticalChanges.slice(0, 2);
+                const gatedCriticalChanges = criticalChanges.slice(2);
+
+                return (
+                    <div className="summary-view">
+                        <div className="summary-header">
+                            <h2 className="summary-title">Addendum Change Summary</h2>
+                            <div className="summary-meta">
+                                <span>Project: {results.project_info.name}</span>
+                                <span>Addendum: #{results.project_info.addendum_number}</span>
+                                <span>Analyzed: {new Date().toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        {/* Always show summary stats */}
+                        <div className="stats-grid">
+                            <div className="stat-card">
+                                <div className="stat-label">Total Changes</div>
+                                <div className="stat-value">{results.summary_stats.total_changes}</div>
+                                <div className="stat-breakdown">
+                                    🔴 Critical: {results.summary_stats.critical_changes}<br/>
+                                    🟡 Moderate: {results.summary_stats.moderate_changes}<br/>
+                                    🟢 Minor: {results.summary_stats.minor_changes}
+                                </div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Doors Affected</div>
+                                <div className="stat-value">{results.summary_stats.doors_affected}</div>
+                            </div>
+                            {!isGateLocked && (
+                                <>
+                                    <div className="stat-card">
+                                        <div className="stat-label">Cost Impact</div>
+                                        <div className="stat-value" style={{fontSize: '24px'}}>{results.summary_stats.estimated_cost_impact}</div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-label">Time Saved</div>
+                                        <div className="stat-value" style={{fontSize: '24px'}}>~5-6 hrs</div>
+                                        <div className="stat-breakdown">vs manual review</div>
+                                    </div>
+                                </>
+                            )}
+                            {isGateLocked && (
+                                <div className="stat-card" style={{opacity: 0.4, filter: 'blur(3px)'}}>
+                                    <div className="stat-label">Cost Impact</div>
+                                    <div className="stat-value" style={{fontSize: '24px'}}>$XX,XXX</div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Preview: First 1-2 critical changes (always shown) */}
+                        {previewChanges.length > 0 && (
+                            <div className="changes-section">
+                                <div className="section-header">
+                                    <span className="section-icon">🔴</span>
+                                    <h3 className="section-title">Critical Changes Preview ({previewChanges.length} of {criticalChanges.length})</h3>
+                                    <span className="preview-badge">Preview</span>
+                                </div>
+                                {previewChanges.map(change => (
+                                    <div key={change.id} className="change-card critical">
+                                        <div className="change-header">
+                                            <div className="change-title">{change.section}</div>
+                                            <div className="change-meta">
+                                                <div>Type: {change.change_type}</div>
+                                                <div>Location: {change.location}</div>
+                                                <div>Division: {change.division}</div>
+                                            </div>
+                                        </div>
+                                        <div className="comparison-box">
+                                            <div className="comparison-side">
+                                                <div className="comparison-label">WAS</div>
+                                                <div className="comparison-text">{change.was}</div>
+                                            </div>
+                                            <div className="comparison-side">
+                                                <div className="comparison-label">NOW</div>
+                                                <div className="comparison-text">{change.now}</div>
+                                            </div>
+                                        </div>
+                                        <div className="impact-section">
+                                            <div className="impact-label">Impact</div>
+                                            <p>{change.impact}</p>
+                                            <div style={{marginTop: '12px'}}>
+                                                <strong>Doors Affected:</strong> {change.doors_affected}<br/>
+                                                <strong>Cost Impact:</strong> {change.cost_impact}
+                                            </div>
+                                            {change.actions.length > 0 && (
+                                                <>
+                                                    <div className="impact-label" style={{marginTop: '16px'}}>Action Items</div>
+                                                    <ul className="action-items">
+                                                        {change.actions.map((action, idx) => (
+                                                            <li key={idx} className="action-item">{action}</li>
+                                                        ))}
+                                                    </ul>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Email Gate Panel */}
+                        {isGateLocked && (
+                            <div className="email-gate-panel">
+                                <h3>🔒 Unlock Full Change Summary</h3>
+                                <p>Enter your work email to see all {results.summary_stats.total_changes} changes, estimated cost impact, and export to PDF/Excel.</p>
+                                <form className="email-gate-form" onSubmit={handleUnlockGate}>
+                                    <input
+                                        type="email"
+                                        className={`email-gate-input ${emailError ? 'error' : ''}`}
+                                        placeholder="your.email@company.com"
+                                        value={gateEmail}
+                                        onChange={(e) => {
+                                            setGateEmail(e.target.value);
+                                            setEmailError('');
+                                        }}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleUnlockGate(e);
+                                            }
+                                        }}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        className="email-gate-button"
+                                        onClick={handleUnlockGate}
+                                    >
+                                        Unlock Full Report
+                                    </button>
+                                </form>
+                                {emailError && <div className="email-error show">{emailError}</div>}
+                            </div>
+                        )}
+
+                        {/* Gated Content */}
+                        <div className={`gated-content ${isGateLocked ? 'locked' : ''}`}>
+                            <div className="gated-items">
+                                {/* Remaining critical changes */}
+                                {gatedCriticalChanges.length > 0 && (
+                                    <div className="changes-section">
+                                        <div className="section-header">
+                                            <span className="section-icon">🔴</span>
+                                            <h3 className="section-title">More Critical Changes ({gatedCriticalChanges.length})</h3>
+                                        </div>
+                                        {gatedCriticalChanges.map(change => (
+                                            <div key={change.id} className="change-card critical">
+                                                <div className="change-header">
+                                                    <div className="change-title">{change.section}</div>
+                                                    <div className="change-meta">
+                                                        <div>Type: {change.change_type}</div>
+                                                        <div>Location: {change.location}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="comparison-box">
+                                                    <div className="comparison-side">
+                                                        <div className="comparison-label">WAS</div>
+                                                        <div className="comparison-text">{change.was}</div>
+                                                    </div>
+                                                    <div className="comparison-side">
+                                                        <div className="comparison-label">NOW</div>
+                                                        <div className="comparison-text">{change.now}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="impact-section">
+                                                    <p>{change.impact}</p>
+                                                    {change.actions.length > 0 && (
+                                                        <>
+                                                            <div className="impact-label" style={{marginTop: '12px'}}>Actions</div>
+                                                            <ul className="action-items">
+                                                                {change.actions.map((action, idx) => (
+                                                                    <li key={idx} className="action-item">{action}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Moderate changes */}
+                                {moderateChanges.length > 0 && (
+                                    <div className="changes-section">
+                                        <div className="section-header">
+                                            <span className="section-icon">🟡</span>
+                                            <h3 className="section-title">Moderate Changes ({moderateChanges.length})</h3>
+                                        </div>
+                                        {moderateChanges.map(change => (
+                                            <div key={change.id} className="change-card moderate">
+                                                <div className="change-header">
+                                                    <div className="change-title">{change.section}</div>
+                                                    <div className="change-meta">
+                                                        <div>Type: {change.change_type}</div>
+                                                        <div>Location: {change.location}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="comparison-box">
+                                                    <div className="comparison-side">
+                                                        <div className="comparison-label">WAS</div>
+                                                        <div className="comparison-text">{change.was}</div>
+                                                    </div>
+                                                    <div className="comparison-side">
+                                                        <div className="comparison-label">NOW</div>
+                                                        <div className="comparison-text">{change.now}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="impact-section">
+                                                    <p>{change.impact}</p>
+                                                    {change.actions.length > 0 && (
+                                                        <>
+                                                            <div className="impact-label" style={{marginTop: '12px'}}>Actions</div>
+                                                            <ul className="action-items">
+                                                                {change.actions.map((action, idx) => (
+                                                                    <li key={idx} className="action-item">{action}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Minor changes */}
+                                {minorChanges.length > 0 && (
+                                    <div className="changes-section">
+                                        <div className="section-header">
+                                            <span className="section-icon">🟢</span>
+                                            <h3 className="section-title">Minor Changes - No Division 8 Impact ({minorChanges.length})</h3>
+                                        </div>
+                                        {minorChanges.map(change => (
+                                            <div key={change.id} className="change-card minor">
+                                                <div className="change-header">
+                                                    <div className="change-title">{change.section}</div>
+                                                    <div className="change-meta">
+                                                        <div>Division: {change.division}</div>
+                                                        <div>Location: {change.location}</div>
+                                                    </div>
+                                                </div>
+                                                <p style={{marginTop: '8px', fontSize: '14px'}}>{change.change_type}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="export-buttons">
+                            <button className="btn-export" onClick={exportToPDF} disabled={isGateLocked}>
+                                📄 Download PDF
+                            </button>
+                            <button className="btn-export" onClick={exportToExcel} disabled={isGateLocked}>
+                                📊 Export to Excel
+                            </button>
+                            <button className="btn-export" onClick={() => {
+                                setOriginalFile(null);
+                                setAddendumFile(null);
+                                setResults(null);
+                                setIsGateLocked(true);
+                                setGateEmail('');
+                            }}>
+                                🔄 Compare Another
+                            </button>
+                        </div>
+
+                        <a 
+                            href="https://fresco-ai.com/" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="fresco-promo-link"
+                        >
+                            <strong>Powered by Fresco</strong> – Try full Division 8 takeoff on this same project
+                        </a>
+
+                        {!isSignedUp && !isGateLocked && (
+                            <div className="cta-section">
+                                <h3>Want a full door and hardware takeoff (not just addendum changes)?</h3>
+                                <p>Send this project to Fresco for complete Division 8 material extraction from your specs and drawings.</p>
+                                <a href="https://fresco-ai.com/" target="_blank" rel="noopener noreferrer" className="btn-cta">Try Fresco</a>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const renderTableView = () => {
+                if (!results) return null;
+
+                return (
+                    <div className="table-view">
+                        <div className="table-controls">
+                            <select defaultValue="all">
+                                <option value="all">All Changes</option>
+                                <option value="div8">Division 8 Only</option>
+                                <option value="critical">Critical Only</option>
+                            </select>
+                            <input type="text" placeholder="Search changes..." />
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Priority</th>
+                                    <th>Division</th>
+                                    <th>Section</th>
+                                    <th>Change Type</th>
+                                    <th>Impact</th>
+                                    <th>Cost</th>
+                                    <th>Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {results.changes.map(change => (
+                                    <tr key={change.id}>
+                                        <td>{change.id}</td>
+                                        <td>
+                                            <span className={`priority-badge ${change.priority}`}>
+                                                {change.priority}
+                                            </span>
+                                        </td>
+                                        <td>{change.division}</td>
+                                        <td>{change.section}</td>
+                                        <td>{change.change_type}</td>
+                                        <td>{change.doors_affected}</td>
+                                        <td>{change.cost_impact}</td>
+                                        <td>{change.location}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            };
+
+            return (
+                <>
+                    <header>
+                        <div className="container">
+                            <div className="header-content">
+                                <div className="logo">
+                                    ADDENDA<span className="logo-accent">TRACK</span>
+                                </div>
+                                <a 
+                                    href="https://fresco-ai.com/" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="fresco-link"
+                                >
+                                    <div className="powered-by">
+                                        Powered by Fresco
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </header>
+
+                    <section className="hero">
+                        <div className="container">
+                            <h1>Addenda just arrived?<br/>Stop Repricing Your Entire Estimate at Midnight.</h1>
+                            <p>Upload your specs and addenda and see every change in 30 seconds, with Division 8 prioritized!</p>
+                            
+                            <div className="value-props">
+                                <div className="value-prop">
+                                    <div className="value-prop-number">5-6 hrs</div>
+                                    <div className="value-prop-text">Time Saved</div>
+                                </div>
+                                <div className="value-prop">
+                                    <div className="value-prop-number">30 sec</div>
+                                    <div className="value-prop-text">Analysis Time</div>
+                                </div>
+                                <div className="value-prop">
+                                    <div className="value-prop-number">All</div>
+                                    <div className="value-prop-text">Changes Tracked</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {!results ? (
+                        <section className="upload-section">
+                            <div className="container">
+                                {isComparing ? (
+                                    <div className="loading">
+                                        <div className="spinner"></div>
+                                        <h3>Analyzing your documents...</h3>
+                                        <p>This typically takes 20-30 seconds</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="upload-grid">
+                                            <label className={`upload-box ${originalFile ? 'has-file' : ''}`}>
+                                                <div className="upload-icon">📄</div>
+                                                <div className="upload-label">Original Specification</div>
+                                                <div className="upload-hint">Click to upload PDF</div>
+                                                {originalFile && (
+                                                    <div className="file-name">✓ {originalFile.name}</div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept=".pdf"
+                                                    onChange={(e) => handleFileChange('original', e)}
+                                                />
+                                            </label>
+
+                                            <label className={`upload-box ${addendumFile ? 'has-file' : ''}`}>
+                                                <div className="upload-icon">📄</div>
+                                                <div className="upload-label">Addendum / Revised Spec</div>
+                                                <div className="upload-hint">Click to upload PDF</div>
+                                                {addendumFile && (
+                                                    <div className="file-name">✓ {addendumFile.name}</div>
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    accept=".pdf"
+                                                    onChange={(e) => handleFileChange('addendum', e)}
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <button 
+                                            className="compare-button"
+                                            disabled={!originalFile || !addendumFile}
+                                            onClick={handleCompare}
+                                        >
+                                            Compare Documents
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </section>
+                    ) : (
+                        <section className="results-section">
+                            <div className="container">
+                                <div className="tabs">
+                                    <button 
+                                        className={`tab ${activeTab === 'summary' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('summary')}
+                                    >
+                                        📝 Summary
+                                    </button>
+                                    <button 
+                                        className={`tab ${activeTab === 'table' ? 'active' : ''}`}
+                                        onClick={() => setActiveTab('table')}
+                                    >
+                                        📊 Table View
+                                    </button>
+                                </div>
+
+                                {activeTab === 'summary' && renderSummaryView()}
+                                {activeTab === 'table' && renderTableView()}
+                            </div>
+                        </section>
+                    )}
+
+                    {showEmailModal && (
+                        <div className="modal-overlay">
+                            <div className="modal">
+                                <h2>You've used your free try!</h2>
+                                <p>Sign up to continue comparing addenda. It's free, no credit card required.</p>
+                                
+                                <ul className="benefits-list">
+                                    <li>Unlimited comparisons</li>
+                                    <li>Save comparison history</li>
+                                    <li>Download PDF reports</li>
+                                    <li>Early access to new features</li>
+                                </ul>
+
+                                <input 
+                                    type="email" 
+                                    className="email-input"
+                                    placeholder="your.email@company.com"
+                                    value={userEmail}
+                                    onChange={(e) => setUserEmail(e.target.value)}
+                                />
+
+                                <div className="modal-buttons">
+                                    <button 
+                                        className="btn-primary"
+                                        onClick={() => handleEmailSignup(userEmail)}
+                                    >
+                                        Get Access
+                                    </button>
+                                    <button 
+                                        className="btn-secondary"
+                                        onClick={() => setShowEmailModal(false)}
+                                    >
+                                        Maybe Later
+                                    </button>
+                                </div>
+
+                                <p style={{fontSize: '12px', marginTop: '16px', color: '#999'}}>
+                                    We respect your privacy. No spam, unsubscribe anytime.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
