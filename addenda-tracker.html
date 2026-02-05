@@ -2116,27 +2116,100 @@
 
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
-
 <script>
+(() => {
   const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxuzUVYUmiMbh5HHfpaLfp5FPaHhjKsCaO-gw84vJuMRtKi_4m18IbpmjyrOb5O/exec";
 
   async function saveEmail(email) {
-    await fetch(SHEET_WEBAPP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
-    });
-  }
-</script>
-<script>
-  document.addEventListener("submit", async function (e) {
-    if (e.target && e.target.querySelector('input[type="email"]')) {
-      e.preventDefault();
-      const email = e.target.querySelector('input[type="email"]').value;
-      await saveEmail(email);
-      alert("Unlocked!");
+    console.log('[saveEmail] sending to webapp url:', SHEET_WEBAPP_URL);
+    try {
+      const resp = await fetch(SHEET_WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: window.location.href, user_agent: navigator.userAgent }),
+      });
+      const text = await resp.text();
+      let data;
+      try { data = JSON.parse(text); } catch(e){ data = text; }
+      console.log('[saveEmail] response status:', resp.status, 'body:', data);
+      return { ok: resp.ok, status: resp.status, body: data };
+    } catch (err) {
+      console.error('[saveEmail] network error', err);
+      return { ok: false, error: err.message || String(err) };
     }
-  });
+  }
+
+  // Try to find any form that contains an email input. If found, attach a submit handler.
+  const forms = Array.from(document.forms);
+  let attached = false;
+  for (const form of forms) {
+    if (form.querySelector('input[type="email"]')) {
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const emailInput = form.querySelector('input[type="email"]');
+        const email = emailInput && emailInput.value && emailInput.value.trim();
+        console.log('[emailForm submit] email:', email);
+        if (!email) { alert('Please enter a valid email'); return; }
+
+        const btn = form.querySelector('button[type="submit"], input[type="submit"]');
+        if (btn) { btn.disabled = true; btn.dataset.prevText = btn.textContent; btn.textContent = 'Saving...'; }
+
+        const result = await saveEmail(email);
+
+        if (btn) { btn.disabled = false; if (btn.dataset.prevText) btn.textContent = btn.dataset.prevText; }
+
+        if (result.ok) {
+          alert('Saved and unlocked!');
+          console.log('[emailForm] saved OK');
+        } else {
+          alert('Save failed — check console for details');
+          console.warn('[emailForm] save failed', result);
+        }
+      });
+      attached = true;
+      console.log('[emailForm] attached handler to form:', form);
+      break;
+    }
+  }
+
+  if (!attached) {
+    // If no form found, add a small temporary test UI in bottom-right
+    const testDiv = document.createElement('div');
+    testDiv.style.position = 'fixed';
+    testDiv.style.right = '12px';
+    testDiv.style.bottom = '12px';
+    testDiv.style.padding = '8px';
+    testDiv.style.background = 'white';
+    testDiv.style.border = '1px solid #ccc';
+    testDiv.style.zIndex = 99999;
+    testDiv.innerHTML = `
+      <div style="font-size:12px;margin-bottom:6px;">Email test (temp)</div>
+      <input id="__tmp_email_input" type="email" placeholder="you@me.com" style="width:220px;padding:6px"/><br/>
+      <button id="__tmp_email_btn" style="margin-top:6px;padding:6px">Send test email</button>
+      <div id="__tmp_email_status" style="font-size:12px;margin-top:6px;color:#444"></div>
+    `;
+    document.body.appendChild(testDiv);
+
+    document.getElementById('__tmp_email_btn').addEventListener('click', async () => {
+      const email = document.getElementById('__tmp_email_input').value.trim();
+      if (!email) { alert('Enter an email'); return; }
+      document.getElementById('__tmp_email_status').textContent = 'Sending...';
+      console.log('[TEMP TEST] sending', email);
+      const result = await saveEmail(email);
+      if (result.ok) {
+        document.getElementById('__tmp_email_status').textContent = 'Saved OK';
+        alert('Saved and unlocked!');
+      } else {
+        document.getElementById('__tmp_email_status').textContent = 'Save failed (see console)';
+        alert('Save failed — open console');
+        console.warn('[TEMP TEST] result', result);
+      }
+    });
+
+    console.log('[emailForm] no form detected — injected temporary test UI');
+  }
+})();
 </script>
+
 </body>
 </html>
