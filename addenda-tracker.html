@@ -2116,5 +2116,27 @@
 
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
+
+<script>
+  const SHEET_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxuzUVYUmiMbh5HHfpaLfp5FPaHhjKsCaO-gw84vJuMRtKi_4m18IbpmjyrOb5O/exec";
+
+  async function saveEmail(email) {
+    await fetch(SHEET_WEBAPP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+  }
+</script>
+<script>
+  document.addEventListener("submit", async function (e) {
+    if (e.target && e.target.querySelector('input[type="email"]')) {
+      e.preventDefault();
+      const email = e.target.querySelector('input[type="email"]').value;
+      await saveEmail(email);
+      alert("Unlocked!");
+    }
+  });
+</script>
 </body>
 </html>
