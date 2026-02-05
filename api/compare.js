@@ -56,7 +56,7 @@ console.log('ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY ? process
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000,
+        max_tokens_to_sample: 4000,
         messages: [{
           role: 'user',
           content: `You are analyzing construction document changes for a Division 8 (doors, frames, hardware) estimator.
