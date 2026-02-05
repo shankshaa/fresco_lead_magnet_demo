@@ -34,6 +34,8 @@ export default async function handler(req, res) {
 
     // Get API key from environment variable
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+    console.log('ANTHROPIC_API_KEY set:', !!process.env.ANTHROPIC_API_KEY);
+console.log('ANTHROPIC_API_KEY prefix:', process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.slice(0,8) + '...' : 'none');
 
     if (!ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not configured');
