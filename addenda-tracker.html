@@ -21,10 +21,10 @@
 
         :root {
             --primary: #1a1a1a;
-            --accent: #2d7a3e;        /* Fresco green */
+            --accent: #2d7a3e;        /* Green accent */
             --accent-dark: #236330;   /* Darker green for hover */
             --accent-light: #e8f5e9;  /* Light green for backgrounds */
-            --bg: #f5f5f0;            /* Warm beige background like Fresco */
+            --bg: #f5f5f0;            /* Warm beige background */
             --surface: #ffffff;
             --border: #d4d4c8;
             --text: #2a2a2a;
@@ -794,7 +794,7 @@
             transform: translateY(-2px);
         }
 
-        /* Light Fresco Promo Link */
+        /* Portfolio Promo Link */
         .fresco-promo-link {
             display: inline-block;
             margin-top: 24px;
@@ -1880,19 +1880,19 @@
                         </div>
 
                         <a 
-                            href="https://fresco-ai.com/" 
+                            href="https://shashankshekhar.lovable.app/" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="fresco-promo-link"
                         >
-                            <strong>Powered by Fresco</strong> – Try full Division 8 takeoff on this same project
+                            <strong>Built by Shashank</strong> – AI-powered construction document analysis tool
                         </a>
 
                         {!isSignedUp && !isGateLocked && (
                             <div className="cta-section">
-                                <h3>Want a full door and hardware takeoff (not just addendum changes)?</h3>
-                                <p>Send this project to Fresco for complete Division 8 material extraction from your specs and drawings.</p>
-                                <a href="https://fresco-ai.com/" target="_blank" rel="noopener noreferrer" className="btn-cta">Try Fresco</a>
+                                <h3>Like this tool? Check out more projects!</h3>
+                                <p>Built by Shashank - AI engineer creating tools for construction and beyond.</p>
+                                <a href="https://shashankshekhar.lovable.app/" target="_blank" rel="noopener noreferrer" className="btn-cta">View Portfolio</a>
                             </div>
                         )}
                     </div>
@@ -1957,13 +1957,13 @@
                                     ADDENDA<span className="logo-accent">TRACK</span>
                                 </div>
                                 <a 
-                                    href="https://fresco-ai.com/" 
+                                    href="https://shashankshekhar.lovable.app/" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="fresco-link"
                                 >
                                     <div className="powered-by">
-                                        Powered by Fresco
+                                        By Shashank | View Portfolio →
                                     </div>
                                 </a>
                             </div>
@@ -2116,31 +2116,5 @@
 
         ReactDOM.render(<App />, document.getElementById('root'));
     </script>
-
-<script>
-  document.addEventListener("submit", async function (e) {
-    // handle any form that contains an email input
-    if (e.target && e.target.querySelector && e.target.querySelector('input[type="email"]')) {
-      e.preventDefault();
-      const email = e.target.querySelector('input[type="email"]').value.trim();
-      if (!email) { alert('Please enter an email'); return; }
-
-      const btn = e.target.querySelector('button[type="submit"], input[type="submit"]');
-      if (btn) { btn.disabled = true; btn.dataset.orig = btn.textContent; btn.textContent = 'Saving...'; }
-
-      const result = await saveEmail(email);
-
-      if (btn) { btn.disabled = false; if (btn.dataset.orig) btn.textContent = btn.dataset.orig; }
-
-      if (result.ok) {
-        alert('Saved and unlocked!');
-        console.log('[emailForm] saved OK');
-      } else {
-        alert('Save failed — open console and check the network request');
-        console.warn('[emailForm] save failed', result);
-      }
-    }
-  });
-</script>
 </body>
 </html>
